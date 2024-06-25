@@ -3,11 +3,18 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Models\Contracts\HasTenants;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Collection;
 
-class User extends Authenticatable
+class User extends Authenticatable implements HasTenants, FilamentUser
 {
     use HasFactory, Notifiable;
 
@@ -20,6 +27,9 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role_id',
+        'phone',
+        'image'
     ];
 
     /**
@@ -44,4 +54,54 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+//    public function lab():BelongsTo
+//    {
+//        return $this->belongsTo(Lab::class);
+//    }
+
+    public function labs(): BelongsToMany
+    {
+        return $this->belongsToMany(Lab::class);
+    }
+
+    public function role(): BelongsTo
+    {
+        return $this->belongsTo(Role::class);
+    }
+//
+//    public function currentTeam(): BelongsTo
+//    {
+//        return $this->belongsTo(Team::class, 'current_team_id');
+//    }
+//
+//    public function getTenants(Panel $panel): Collection
+//    {
+//        return $this->teams;
+//    }
+    public function getTenants(Panel $panel): Collection
+    {
+        // TODO: Implement getTenants() method.
+        return $this->labs;
+    }
+
+    public function canAccessTenant(Model $tenant): bool
+    {
+//        return $this->labs()->whereKey($tenant)->exists();
+        return $this->labs->contains($tenant);
+    }
+
+    /**
+     * @throws \Exception
+     */
+    public function canAccessPanel(Panel $panel): bool
+   {
+       $role = auth()->user()->role->name;
+
+       return match ($panel->getId())
+       {
+           'admin' => $role === "admin",
+           'lab' => $role === "lab admin" || $role === 'admin',
+       };
+   }
 }
